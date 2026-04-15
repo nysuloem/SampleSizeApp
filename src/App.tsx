@@ -1,26 +1,90 @@
 import React, { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-import { Calculator, FlaskConical, Info, Users, Sigma, ChartScatter, Copy } from "lucide-react";
+import { Calculator, FlaskConical, Users, Sigma, Copy } from "lucide-react";
 
-function erf(x: number) {
-  const sign = x >= 0 ? 1 : -1;
-  x = Math.abs(x);
-  const a1 = 0.254829592;
-  const a2 = -0.284496736;
-  const a3 = 1.421413741;
-  const a4 = -1.453152027;
-  const a5 = 1.061405429;
-  const p = 0.3275911;
-  const t = 1 / (1 + p * x);
-  const y = 1 - (((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t) * Math.exp(-x * x);
-  return sign * y;
+// ── Minimal inline replacements for shadcn components ──────────────────────
+
+function Card({ className = "", children }: { className?: string; children: React.ReactNode }) {
+  return <div className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${className}`}>{children}</div>;
 }
+function CardHeader({ children }: { children: React.ReactNode }) {
+  return <div className="p-6 pb-2">{children}</div>;
+}
+function CardTitle({ className = "", children }: { className?: string; children: React.ReactNode }) {
+  return <h2 className={`text-lg font-semibold leading-tight ${className}`}>{children}</h2>;
+}
+function CardDescription({ children }: { children: React.ReactNode }) {
+  return <p className="mt-1 text-sm text-slate-500">{children}</p>;
+}
+function CardContent({ className = "", children }: { className?: string; children: React.ReactNode }) {
+  return <div className={`p-6 pt-2 ${className}`}>{children}</div>;
+}
+
+function Button({
+  className = "", onClick, children, variant = "default",
+}: {
+  className?: string; onClick?: () => void; children: React.ReactNode; variant?: string;
+}) {
+  const base = "inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium transition-colors focus:outline-none";
+  const styles = variant === "outline"
+    ? `${base} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50`
+    : `${base} bg-slate-900 text-white hover:bg-slate-700`;
+  return <button className={`${styles} ${className}`} onClick={onClick}>{children}</button>;
+}
+
+function Input({
+  type = "text", value, onChange, placeholder, min, className = "",
+}: {
+  type?: string; value: string | number; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string; min?: number; className?: string;
+}) {
+  return (
+    <input type={type} value={value} onChange={onChange} placeholder={placeholder} min={min}
+      className={`w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 ${className}`} />
+  );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <label className="block text-sm font-medium text-slate-700">{children}</label>;
+}
+
+function Textarea({
+  value, onChange, placeholder, readOnly, className = "",
+}: {
+  value: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string; readOnly?: boolean; className?: string;
+}) {
+  return (
+    <textarea value={value} onChange={onChange} placeholder={placeholder} readOnly={readOnly}
+      className={`w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 ${className}`} />
+  );
+}
+
+function Select({ value, onValueChange, children }: { value: string; onValueChange: (v: string) => void; children: React.ReactNode }) {
+  return (
+    <select value={value} onChange={(e) => onValueChange(e.target.value)}
+      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
+      {children}
+    </select>
+  );
+}
+function SelectTrigger({ children }: { children: React.ReactNode }) { return <>{children}</>; }
+function SelectValue() { return null; }
+function SelectContent({ children }: { children: React.ReactNode }) { return <>{children}</>; }
+function SelectItem({ value, children }: { value: string; children: React.ReactNode }) {
+  return <option value={value}>{children}</option>;
+}
+
+function Slider({ value, min, max, step, onValueChange }: {
+  value: number[]; min: number; max: number; step: number; onValueChange: (v: number[]) => void;
+}) {
+  return (
+    <input type="range" min={min} max={max} step={step} value={value[0]}
+      onChange={(e) => onValueChange([Number(e.target.value)])}
+      className="w-full accent-slate-700" />
+  );
+}
+
+// ── Math helpers ────────────────────────────────────────────────────────────
 
 function inverseNormalCdf(p: number) {
   if (p <= 0 || p >= 1) return NaN;
@@ -28,26 +92,18 @@ function inverseNormalCdf(p: number) {
   const b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572];
   const c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
   const d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
-  const plow = 0.02425;
-  const phigh = 1 - plow;
-  let q: number;
-  let r: number;
-
+  const plow = 0.02425, phigh = 1 - plow;
+  let q: number, r: number;
   if (p < plow) {
     q = Math.sqrt(-2 * Math.log(p));
-    return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
-      ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
   }
   if (p > phigh) {
     q = Math.sqrt(-2 * Math.log(1 - p));
-    return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
-      ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
   }
-
-  q = p - 0.5;
-  r = q * q;
-  return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q /
-    (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+  q = p - 0.5; r = q * q;
+  return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
 }
 
 function roundUp(value: number) {
@@ -57,67 +113,33 @@ function roundUp(value: number) {
 
 function calcTwoGroupSampleSize(effect: number, sd: number, alpha: number, power: number) {
   if (effect <= 0 || sd <= 0) return null;
-  const zAlpha = inverseNormalCdf(1 - alpha / 2);
-  const zPower = inverseNormalCdf(power);
-  const d = effect / sd;
-  const nPerGroup = 2 * Math.pow((zAlpha + zPower) / d, 2);
-  return {
-    standardizedEffect: d,
-    nPerGroup: roundUp(nPerGroup),
-  };
+  const za = inverseNormalCdf(1 - alpha / 2), zp = inverseNormalCdf(power), d = effect / sd;
+  return { standardizedEffect: d, nPerGroup: roundUp(2 * Math.pow((za + zp) / d, 2)) };
 }
-
 function calcPairedSampleSize(effect: number, sdDiff: number, alpha: number, power: number) {
   if (effect <= 0 || sdDiff <= 0) return null;
-  const zAlpha = inverseNormalCdf(1 - alpha / 2);
-  const zPower = inverseNormalCdf(power);
-  const dz = effect / sdDiff;
-  const nPairs = Math.pow((zAlpha + zPower) / dz, 2);
-  return {
-    standardizedEffect: dz,
-    nPairs: roundUp(nPairs),
-  };
+  const za = inverseNormalCdf(1 - alpha / 2), zp = inverseNormalCdf(power), dz = effect / sdDiff;
+  return { standardizedEffect: dz, nPairs: roundUp(Math.pow((za + zp) / dz, 2)) };
 }
-
 function calcCorrelationSampleSize(r: number, alpha: number, power: number) {
   if (r <= 0 || r >= 1) return null;
-  const zAlpha = inverseNormalCdf(1 - alpha / 2);
-  const zPower = inverseNormalCdf(power);
+  const za = inverseNormalCdf(1 - alpha / 2), zp = inverseNormalCdf(power);
   const fisher = 0.5 * Math.log((1 + r) / (1 - r));
-  const n = Math.pow((zAlpha + zPower) / fisher, 2) + 3;
-  return {
-    n: roundUp(n),
-  };
+  return { n: roundUp(Math.pow((za + zp) / fisher, 2) + 3) };
 }
-
 function calcMultiGroupSampleSize(effect: number, sd: number, groups: number, alpha: number, power: number) {
   if (effect <= 0 || sd <= 0 || groups < 3) return null;
-  const zAlpha = inverseNormalCdf(1 - alpha / 2);
-  const zPower = inverseNormalCdf(power);
-  const d = effect / sd;
-  const twoGroupEquivalent = 2 * Math.pow((zAlpha + zPower) / d, 2);
-  const inflation = 1 + 0.2 * (groups - 2);
-  const nPerGroup = twoGroupEquivalent * inflation;
-  return {
-    standardizedEffect: d,
-    nPerGroup: roundUp(nPerGroup),
-    totalN: roundUp(nPerGroup) * groups,
-  };
+  const za = inverseNormalCdf(1 - alpha / 2), zp = inverseNormalCdf(power), d = effect / sd;
+  const nPerGroup = roundUp(2 * Math.pow((za + zp) / d, 2) * (1 + 0.2 * (groups - 2)));
+  return { standardizedEffect: d, nPerGroup, totalN: nPerGroup * groups };
 }
-
 function interpretMagnitude(value: number, type: "d" | "r") {
   if (!Number.isFinite(value)) return "Unclear";
-  if (type === "d") {
-    if (value < 0.2) return "Very small";
-    if (value < 0.5) return "Small";
-    if (value < 0.8) return "Moderate";
-    return "Large";
-  }
-  if (value < 0.1) return "Very small";
-  if (value < 0.3) return "Small";
-  if (value < 0.5) return "Moderate";
-  return "Large";
+  if (type === "d") { if (value < 0.2) return "Very small"; if (value < 0.5) return "Small"; if (value < 0.8) return "Moderate"; return "Large"; }
+  if (value < 0.1) return "Very small"; if (value < 0.3) return "Small"; if (value < 0.5) return "Moderate"; return "Large";
 }
+
+// ── Main component ──────────────────────────────────────────────────────────
 
 export default function PowerAnalysisStudentApp() {
   const [design, setDesign] = useState("two-group");
@@ -126,114 +148,78 @@ export default function PowerAnalysisStudentApp() {
   const [biologicalQuestion, setBiologicalQuestion] = useState("");
   const [outcome, setOutcome] = useState("");
   const [units, setUnits] = useState("");
-
   const [effect, setEffect] = useState(10);
   const [sd, setSd] = useState(12);
   const [sdDiff, setSdDiff] = useState(10);
   const [r2, setR2] = useState(0.12);
   const [groups, setGroups] = useState(3);
-
   const [variabilitySource, setVariabilitySource] = useState<"" | "hummod" | "literature">("");
 
   const result = useMemo(() => {
     if (design === "two-group") return calcTwoGroupSampleSize(effect, sd, alpha, power);
     if (design === "paired") return calcPairedSampleSize(effect, sdDiff, alpha, power);
-    if (design === "correlation") {
-      const r = Math.sqrt(r2);
-      return calcCorrelationSampleSize(r, alpha, power);
-    }
+    if (design === "correlation") return calcCorrelationSampleSize(Math.sqrt(r2), alpha, power);
     return calcMultiGroupSampleSize(effect, sd, groups, alpha, power);
   }, [design, effect, sd, sdDiff, r2, groups, alpha, power]);
 
-  const variabilitySourceText = useMemo(() => {
-    if (variabilitySource === "hummod") return "a pilot experiment in HumMod";
-    if (variabilitySource === "literature") return "prior studies in the literature";
-    return "an estimated source of variability";
-  }, [variabilitySource]);
+  const variabilitySourceText = variabilitySource === "hummod" ? "a pilot experiment in HumMod"
+    : variabilitySource === "literature" ? "prior studies in the literature"
+    : "an estimated source of variability";
 
   const assumptionsText = useMemo(() => {
-    if (design === "two-group" && result && "nPerGroup" in result) {
-      return `We estimated that a biologically meaningful difference in ${outcome || "the outcome variable"} would be ${effect} ${units || "units"} between the treatment and control groups. We estimated the standard deviation to be ${sd} ${units || "units"}, based on ${variabilitySourceText}. Using a two-sided alpha of ${alpha.toFixed(2)} and desired power of ${(power * 100).toFixed(0)}%, the estimated required sample size is ${result.nPerGroup} participants per group.`;
-    }
-    if (design === "paired" && result && "nPairs" in result) {
-      return `We estimated that a biologically meaningful difference in ${outcome || "the outcome variable"} would be ${effect} ${units || "units"} between conditions. We estimated the standard deviation of the paired differences to be ${sdDiff} ${units || "units"}, based on ${variabilitySourceText}. Using a two-sided alpha of ${alpha.toFixed(2)} and desired power of ${(power * 100).toFixed(0)}%, the estimated required sample size is ${result.nPairs} participants.`;
-    }
-    if (design === "correlation" && result && "n" in result) {
-      return `We estimated that a biologically meaningful association would correspond to a an r² value of ${r2.toFixed(2)} (r ≈ ${Math.sqrt(r2).toFixed(2)}) between the two variables. Using a two-sided alpha of ${alpha.toFixed(2)} and desired power of ${(power * 100).toFixed(0)}%, the estimated required sample size is ${result.n} participants.`;
-    }
-    if (design === "anova" && result && "nPerGroup" in result && "totalN" in result) {
-      return `We estimated that the experiment would include ${groups} independent groups. We estimated that a biologically meaningful difference between any two groups would be ${effect} ${units || "units"}, and that the standard deviation would be ${sd} ${units || "units"}, based on ${variabilitySourceText}. Using a two-sided alpha of ${alpha.toFixed(2)} and desired power of ${(power * 100).toFixed(0)}%, the estimated required sample size is ${result.nPerGroup} participants per group (${result.totalN} total).`;
-    }
+    if (design === "two-group" && result && "nPerGroup" in result)
+      return `We estimated that a biologically meaningful difference in ${outcome || "the outcome variable"} would be ${effect} ${units || "units"} between the treatment and control groups. We estimated the standard deviation to be ${sd} ${units || "units"}, based on ${variabilitySourceText}. Using a two-sided alpha of ${alpha.toFixed(2)} and desired power of ${(power*100).toFixed(0)}%, the estimated required sample size is ${result.nPerGroup} participants per group.`;
+    if (design === "paired" && result && "nPairs" in result)
+      return `We estimated that a biologically meaningful difference in ${outcome || "the outcome variable"} would be ${effect} ${units || "units"} between conditions. We estimated the standard deviation of the paired differences to be ${sdDiff} ${units || "units"}, based on ${variabilitySourceText}. Using a two-sided alpha of ${alpha.toFixed(2)} and desired power of ${(power*100).toFixed(0)}%, the estimated required sample size is ${result.nPairs} participants.`;
+    if (design === "correlation" && result && "n" in result)
+      return `We estimated that a biologically meaningful association would correspond to an r² value of ${r2.toFixed(2)} (r ≈ ${Math.sqrt(r2).toFixed(2)}) between the two variables. Using a two-sided alpha of ${alpha.toFixed(2)} and desired power of ${(power*100).toFixed(0)}%, the estimated required sample size is ${result.n} participants.`;
+    if (design === "anova" && result && "nPerGroup" in result && "totalN" in result)
+      return `We estimated that the experiment would include ${groups} independent groups. We estimated that a biologically meaningful difference between any two groups would be ${effect} ${units || "units"}, and that the standard deviation would be ${sd} ${units || "units"}, based on ${variabilitySourceText}. Using a two-sided alpha of ${alpha.toFixed(2)} and desired power of ${(power*100).toFixed(0)}%, the estimated required sample size is ${result.nPerGroup} participants per group (${result.totalN} total).`;
     return "Enter values to generate a sample size justification.";
   }, [design, result, outcome, units, effect, sd, sdDiff, r2, alpha, power, groups, variabilitySourceText]);
 
   const teachingText = useMemo(() => {
-    if (design === "two-group" && result && "standardizedEffect" in result) {
+    if (design === "two-group" && result && "standardizedEffect" in result)
       return `Your standardized effect size is d = ${result.standardizedEffect.toFixed(2)} (${interpretMagnitude(result.standardizedEffect, "d")}). Larger effects reduce required sample size. Greater variability increases required sample size.`;
-    }
-    if (design === "paired" && result && "standardizedEffect" in result) {
+    if (design === "paired" && result && "standardizedEffect" in result)
       return `Your standardized paired effect size is dz = ${result.standardizedEffect.toFixed(2)} (${interpretMagnitude(result.standardizedEffect, "d")}). Paired designs often need fewer subjects when within-subject variability is lower than between-subject variability.`;
-    }
-    if (design === "correlation" && result && "n" in result) {
+    if (design === "correlation" && result && "n" in result)
       return `You are powered to detect an association of about r² = ${r2.toFixed(2)} (r ≈ ${Math.sqrt(r2).toFixed(2)}; ${interpretMagnitude(Math.sqrt(r2), "r")}). Smaller associations require much larger sample sizes.`;
-    }
-    if (design === "anova" && result && "standardizedEffect" in result && "totalN" in result) {
+    if (design === "anova" && result && "totalN" in result)
       return `Your multi-group design uses the same core logic as the two-group design: smaller meaningful differences and greater variability increase the required sample size. The current approximation adds a modest inflation for having ${groups} groups.`;
-    }
     return "";
   }, [design, result, r2, groups]);
 
-  const copyText = async () => {
-    try {
-      await navigator.clipboard.writeText(assumptionsText);
-    } catch {
-      // no-op
-    }
-  };
+  const copyText = async () => { try { await navigator.clipboard.writeText(assumptionsText); } catch { /* no-op */ } };
 
   const clearExample = () => {
-    setBiologicalQuestion("");
-    setOutcome("");
-    setUnits("");
-    setDesign("two-group");
-    setEffect(10);
-    setSd(12);
-    setSdDiff(10);
-    setR2(0.12);
-    setGroups(3);
-    setVariabilitySource("");
+    setBiologicalQuestion(""); setOutcome(""); setUnits("");
+    setDesign("two-group"); setEffect(10); setSd(12); setSdDiff(10); setR2(0.12); setGroups(3); setVariabilitySource("");
   };
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <Card className="rounded-2xl border-slate-200 shadow-sm">
+
+        <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl border bg-white p-2 shadow-sm">
-                <Calculator className="h-5 w-5" />
-              </div>
+              <div className="rounded-2xl border bg-white p-2 shadow-sm"><Calculator className="h-5 w-5" /></div>
               <div>
                 <CardTitle className="text-2xl">Sample Size & Power Guide</CardTitle>
-                <CardDescription>
-                  Use this tool to estimate and justify a defensible sample size for your experiment.
-                </CardDescription>
+                <CardDescription>Use this tool to estimate and justify a defensible sample size for your experiment.</CardDescription>
               </div>
             </div>
           </CardHeader>
         </Card>
 
-        <Card className="rounded-2xl border-slate-200 shadow-sm">
+        <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl border bg-white p-2 shadow-sm">
-                <FlaskConical className="h-5 w-5" />
-              </div>
+              <div className="rounded-2xl border bg-white p-2 shadow-sm"><FlaskConical className="h-5 w-5" /></div>
               <div>
                 <CardTitle>Study Design Info</CardTitle>
-                <CardDescription>
-                  Describe your experiment and enter the key assumptions needed to estimate sample size.
-                </CardDescription>
+                <CardDescription>Describe your experiment and enter the key assumptions needed to estimate sample size.</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -241,19 +227,13 @@ export default function PowerAnalysisStudentApp() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Research question</Label>
-                <Textarea
-                  value={biologicalQuestion}
-                  onChange={(e) => setBiologicalQuestion(e.target.value)}
-                  className="min-h-[90px]"
-                  placeholder="Enter your research question here"
-                />
+                <Textarea value={biologicalQuestion} onChange={(e) => setBiologicalQuestion(e.target.value)}
+                  className="min-h-[90px]" placeholder="Enter your research question here" />
               </div>
               <div className="space-y-2">
                 <Label>What kind of statistical test are you planning?</Label>
                 <Select value={design} onValueChange={setDesign}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="two-group">Two independent groups</SelectItem>
                     <SelectItem value="paired">Paired / repeated measures</SelectItem>
@@ -263,90 +243,33 @@ export default function PowerAnalysisStudentApp() {
                 </Select>
               </div>
             </div>
-
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Outcome variable name</Label>
-                <Input
-                  value={outcome}
-                  onChange={(e) => setOutcome(e.target.value)}
-                  placeholder="e.g., Sweat rate"
-                />
+                <Input value={outcome} onChange={(e) => setOutcome(e.target.value)} placeholder="e.g., Sweat rate" />
               </div>
               <div className="space-y-2">
                 <Label>Units</Label>
-                <Input
-                  value={units}
-                  onChange={(e) => setUnits(e.target.value)}
-                  placeholder="e.g., mL/min or mmol/L"
-                />
+                <Input value={units} onChange={(e) => setUnits(e.target.value)} placeholder="e.g., mL/min or mmol/L" />
               </div>
             </div>
-
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                className="rounded-2xl"
-                onClick={() => {
-                  setDesign("two-group");
-                  setBiologicalQuestion("Differences in sweat rate between males and females during exercise");
-                  setOutcome("Sweat rate");
-                  setUnits("mL/min");
-                  setEffect(0.3);
-                  setSd(0.4);
-                }}
-              >
-                Sweat rate example
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-2xl"
-                onClick={() => {
-                  setDesign("paired");
-                  setBiologicalQuestion("Effect of lisinopril on OGTT response");
-                  setOutcome("Blood glucose at 2 hours post-consumption");
-                  setUnits("mmol/L");
-                  setEffect(1.5);
-                  setSdDiff(2);
-                }}
-              >
-                Lisinopril OGTT example
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-2xl"
-                onClick={() => {
-                  setDesign("correlation");
-                  setBiologicalQuestion("Is plasma insulin correlated with plasma cortisol in T1D patients?");
-                  setOutcome("Plasma insulin and plasma cortisol");
-                  setUnits("pmol/L and nmol/L");
-                  setR2(0.12);
-                }}
-              >
-                T1D Example
-              </Button>
-              <Button
-                className="rounded-2xl bg-red-500 text-white hover:bg-red-600"
-                onClick={clearExample}
-              >
-                Clear info
-              </Button>
+              <Button variant="outline" onClick={() => { setDesign("two-group"); setBiologicalQuestion("Differences in sweat rate between males and females during exercise"); setOutcome("Sweat rate"); setUnits("mL/min"); setEffect(0.3); setSd(0.4); }}>Sweat rate example</Button>
+              <Button variant="outline" onClick={() => { setDesign("paired"); setBiologicalQuestion("Effect of lisinopril on OGTT response"); setOutcome("Blood glucose at 2 hours post-consumption"); setUnits("mmol/L"); setEffect(1.5); setSdDiff(2); }}>Lisinopril OGTT example</Button>
+              <Button variant="outline" onClick={() => { setDesign("correlation"); setBiologicalQuestion("Is plasma insulin correlated with plasma cortisol in T1D patients?"); setOutcome("Plasma insulin and plasma cortisol"); setUnits("pmol/L and nmol/L"); setR2(0.12); }}>T1D Example</Button>
+              <Button className="bg-red-500 text-white hover:bg-red-600" onClick={clearExample}>Clear info</Button>
             </div>
           </CardContent>
         </Card>
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <Card className="rounded-2xl border-slate-200 shadow-sm">
+          <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="rounded-2xl border bg-white p-2 shadow-sm">
-                  <FlaskConical className="h-5 w-5" />
-                </div>
+                <div className="rounded-2xl border bg-white p-2 shadow-sm"><FlaskConical className="h-5 w-5" /></div>
                 <div>
                   <CardTitle>Sample Size Assumptions</CardTitle>
-                  <CardDescription>
-                    Enter the biologically meaningful effect and the expected variability for your design.
-                  </CardDescription>
+                  <CardDescription>Enter the biologically meaningful effect and the expected variability for your design.</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -364,7 +287,6 @@ export default function PowerAnalysisStudentApp() {
                   </div>
                 </div>
               )}
-
               {design === "paired" && (
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
@@ -378,7 +300,6 @@ export default function PowerAnalysisStudentApp() {
                   </div>
                 </div>
               )}
-
               {design === "correlation" && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -386,18 +307,13 @@ export default function PowerAnalysisStudentApp() {
                     <span className="text-sm text-slate-600">r² = {r2.toFixed(2)}</span>
                   </div>
                   <Slider value={[r2]} min={0.01} max={0.8} step={0.01} onValueChange={(v) => setR2(v[0])} />
-                  <p className="text-xs text-slate-500">Example: r² represents the proportion of variation in the outcome variable explained by the other variable (e.g., r² = 0.25 means 25% explained).</p>
+                  <p className="text-xs text-slate-500">r² represents the proportion of variation in the outcome variable explained by the other variable (e.g., r² = 0.25 means 25% explained).</p>
                 </div>
               )}
-
               {design === "anova" && (
                 <div className="space-y-4 rounded-2xl border p-4">
-                  <p className="text-sm text-slate-700">
-                    <strong>Recommendation:</strong> We recommend using a study design with no more than 2 groups unless absolutely necessary.
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    If you proceed with 3 or more groups, simplify by estimating the smallest meaningful difference between any two groups and the expected SD.
-                  </p>
+                  <p className="text-sm text-slate-700"><strong>Recommendation:</strong> We recommend using a study design with no more than 2 groups unless absolutely necessary.</p>
+                  <p className="text-sm text-slate-600">If you proceed with 3 or more groups, simplify by estimating the smallest meaningful difference between any two groups and the expected SD.</p>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Number of groups</Label>
@@ -414,17 +330,21 @@ export default function PowerAnalysisStudentApp() {
                   </div>
                 </div>
               )}
-
               {design !== "correlation" && (
                 <div className="space-y-4 rounded-2xl border p-4">
                   <Label>Where did your variability estimate come from?</Label>
                   <div className="grid gap-3 text-sm text-slate-700 md:grid-cols-2">
-                    <label className="flex items-center gap-2"><input type="checkbox" checked={variabilitySource === "hummod"} onChange={(e) => setVariabilitySource(e.target.checked ? "hummod" : "")} /> Pilot experiment in HumMod</label>
-                    <label className="flex items-center gap-2"><input type="checkbox" checked={variabilitySource === "literature"} onChange={(e) => setVariabilitySource(e.target.checked ? "literature" : "")} /> Prior studies in the literature</label>
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={variabilitySource === "hummod"} onChange={(e) => setVariabilitySource(e.target.checked ? "hummod" : "")} />
+                      Pilot experiment in HumMod
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={variabilitySource === "literature"} onChange={(e) => setVariabilitySource(e.target.checked ? "literature" : "")} />
+                      Prior studies in the literature
+                    </label>
                   </div>
                 </div>
               )}
-
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -432,9 +352,7 @@ export default function PowerAnalysisStudentApp() {
                     <span className="text-sm text-slate-600">{alpha.toFixed(2)}</span>
                   </div>
                   <Slider value={[alpha]} min={0.01} max={0.1} step={0.01} onValueChange={(v) => setAlpha(v[0])} />
-                  <p className="text-xs leading-5 text-slate-500">
-                    Alpha is the P-value threshold used for statistical significance. The usual default is 0.05, meaning researchers accept about a 5% chance of concluding there is an effect when there really is not one. Most students should leave this at 0.05, but you can adjust it to see how stricter or looser thresholds affect sample size.
-                  </p>
+                  <p className="text-xs leading-5 text-slate-500">Alpha is the P-value threshold used for statistical significance. The usual default is 0.05, meaning researchers accept about a 5% chance of concluding there is an effect when there really is not one.</p>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -442,21 +360,17 @@ export default function PowerAnalysisStudentApp() {
                     <span className="text-sm text-slate-600">{(power * 100).toFixed(0)}%</span>
                   </div>
                   <Slider value={[power]} min={0.6} max={0.95} step={0.01} onValueChange={(v) => setPower(v[0])} />
-                  <p className="text-xs leading-5 text-slate-500">
-                    Power is the probability that your experiment will detect the effect if the effect is real. The usual default is 80%, which is a common compromise between scientific rigor and practical feasibility. Most students should leave this at 80%, but you can adjust it to see how wanting more certainty increases sample size.
-                  </p>
+                  <p className="text-xs leading-5 text-slate-500">Power is the probability that your experiment will detect the effect if the effect is real. The usual default is 80%.</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <div className="space-y-6">
-            <Card className="rounded-2xl border-slate-200 shadow-sm">
+            <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-2xl border bg-white p-2 shadow-sm">
-                    <Users className="h-5 w-5" />
-                  </div>
+                  <div className="rounded-2xl border bg-white p-2 shadow-sm"><Users className="h-5 w-5" /></div>
                   <div>
                     <CardTitle>Estimated sample size</CardTitle>
                     <CardDescription>Approximate starting point for planning.</CardDescription>
@@ -489,18 +403,14 @@ export default function PowerAnalysisStudentApp() {
                     <p className="text-sm text-slate-600">Total N ≈ {result.totalN}</p>
                   </div>
                 )}
-                <div className="rounded-2xl border p-4 text-sm leading-6 text-slate-700">
-                  {teachingText}
-                </div>
+                <div className="rounded-2xl border p-4 text-sm leading-6 text-slate-700">{teachingText}</div>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border-slate-200 shadow-sm">
+            <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-2xl border bg-white p-2 shadow-sm">
-                    <Sigma className="h-5 w-5" />
-                  </div>
+                  <div className="rounded-2xl border bg-white p-2 shadow-sm"><Sigma className="h-5 w-5" /></div>
                   <div>
                     <CardTitle>Paste-ready justification</CardTitle>
                     <CardDescription>Students can adapt this into their methods section.</CardDescription>
@@ -509,15 +419,13 @@ export default function PowerAnalysisStudentApp() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea value={assumptionsText} readOnly className="min-h-[180px]" />
-                <Button className="w-full rounded-2xl" onClick={copyText}>
+                <Button className="w-full" onClick={copyText}>
                   <Copy className="mr-2 h-4 w-4" /> Copy justification
                 </Button>
               </CardContent>
             </Card>
           </div>
         </div>
-
-        
       </div>
     </div>
   );
