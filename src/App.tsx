@@ -455,18 +455,21 @@ export default function PowerAnalysisStudentApp() {
             {/* Subgroup question — not shown for correlation */}
             {showSubgroupQuestion && (
               <div className="mt-5 border-t border-slate-200 pt-5">
-                <p className="mb-1 text-sm font-semibold">Are you planning to examine this question separately within pre-hoc groups?</p>
-                <p className="mb-3 text-xs text-slate-500">
-                  Pre-hoc groups are groups you define <em>before</em> running any simulations, based on a known participant characteristic — for example, sex (male/female), age group, or ethnicity. This is separate from the treatment groups you are already comparing.
+                <p className="mb-1 text-sm font-semibold">On top of your treatment comparison, are you planning to examine your question separately within pre-hoc groups?</p>
+                <p className="mb-2 text-xs text-slate-500">
+                  Your treatment comparison (e.g., alcoholics vs. non-alcoholics, treatment vs. control) is already accounted for in Step 2. Pre-hoc groups are an <em>additional</em>, separate characteristic of your participants — something like sex, age group, or ethnicity — that you want to stratify by on top of that comparison.
+                </p>
+                <p className="mb-3 text-xs font-medium text-slate-700 rounded bg-slate-100 p-2">
+                  Example: if your question is "does ethanol lower BP in both males and females?", your treatment comparison is ethanol vs. no ethanol — and <em>sex</em> is the pre-hoc grouping on top of that. Do not select Yes simply because your study has two treatment groups — that comparison is already captured by your design choice above.
                 </p>
                 <div className="grid gap-3 text-sm md:grid-cols-2">
                   <ButtonChoice selected={subgroups === "no"} onClick={() => update({ subgroups: "no", numSubgroups: 2, subgroupLabel: "" })}>
                     <strong>No</strong>
-                    <p>All participants come from one group</p>
+                    <p>I am not stratifying by any additional participant characteristic — the only groups in my study are the treatment/exposure groups already defined above</p>
                   </ButtonChoice>
                   <ButtonChoice selected={subgroups === "yes"} onClick={() => update({ subgroups: "yes" })}>
                     <strong>Yes</strong>
-                    <p>I want to examine the effect separately within two or more pre-hoc groups (e.g., males and females)</p>
+                    <p>I want to examine my treatment comparison separately within two or more pre-hoc groups (e.g., separately in males and females)</p>
                   </ButtonChoice>
                 </div>
 
@@ -673,11 +676,13 @@ export default function PowerAnalysisStudentApp() {
                   </div>
                 )}
 
-                <div className="mt-4 border-t border-slate-200 pt-4" />
+                {variabilitySource && <div className="mt-4 border-t border-slate-200 pt-4" />}
               </div>
             )}
 
-            {/* ── Design-specific inputs ── */}
+            {/* ── Design-specific inputs — only shown after source is selected ── */}
+            {variabilitySource && (
+              <>
             {design === "two-group" && (
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
@@ -792,6 +797,7 @@ export default function PowerAnalysisStudentApp() {
                 </div>
               </div>
             )}
+            </>)}
 
             <button
               type="button"
